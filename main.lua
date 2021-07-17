@@ -37,6 +37,8 @@ local utils = require "mp.utils"
 package.path = utils.join_path(utils.join_path(mp.get_script_directory(), "json.lua"), "json.lua;") .. package.path
 local json = require "json"
 
+-- sid to be operated on
+local chat_sid
 -- request url for the chat data
 local twitch_comments_url
 -- next segment ID to fetch from Twitch
@@ -117,12 +119,13 @@ function load_twitch_chat(is_new_session)
     end
     seq_counter_base = seq_counter_base + #comments
 
-    mp.commandv("sub-remove")
+    mp.commandv("sub-remove", chat_sid)
     mp.command_native({
         name = "sub-add",
         url = "memory://" .. curr_segment .. next_segment,
         title = "Twitch Chat"
     })
+    chat_sid = mp.get_property_native("sid")
 
     return last_msg_offset
 end
@@ -142,15 +145,19 @@ function handle_track_change(name, sid)
         timer:kill()
         timer = nil
     elseif sid and not timer then
-        local sub_filename = mp.get_property_native("current-tracks/sub/external-filename")
-        twitch_comments_url = sub_filename:match("https://api.twitch.tv/v5/videos/%d+/comments")
+        if not twitch_comments_url then
+            local sub_filename = mp.get_property_native("current-tracks/sub/external-filename")
+            twitch_comments_url = sub_filename:match("https://api.twitch.tv/v5/videos/%d+/comments")
+        end
 
+        chat_sid = sid
         timer_callback(true)
     end
 end
 
 function handle_seek()
-    if mp.get_property_native("time-pos") >= 0 then
+    local time_pos = mp.get_property_native("time-pos")
+    if time_pos and time_pos >= 0 then
         load_twitch_chat(true)
     end
 end
