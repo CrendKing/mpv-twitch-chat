@@ -9,9 +9,10 @@ Options:
     color: Whether the chat message is colored with the user color of the commenter.
 
     duration_multiplier: Each chat message's duration is calculated based on the density of the messages at the time after
-        applying this multiplier.
+        applying this multiplier. Basically, if you want more messages simultaneously on screen, increase this number.
 
-    max_duration: Maximum duration in seconds of each chat message after applying the previous multiplier.
+    max_duration: Maximum duration in seconds of each chat message after applying the previous multiplier. This exists to prevent
+        messages to stay forever in "cold" segments.
 
     fetch_aot: The chat data is downloaded in segments. This script uses timer to fetch new segments this many seconds before the
         current segment is exhausted. Increase this number to avoid interruption if you have slower network to Twitch.
@@ -58,7 +59,12 @@ function load_twitch_chat(is_new_session)
 
     local request_url
     if is_new_session then
-        request_url = twitch_comments_url .. "?content_offset_seconds=" .. mp.get_property_native("time-pos")
+        local time_pos = mp.get_property_native("time-pos")
+        if not time_pos then
+            return
+        end
+
+        request_url = twitch_comments_url .. "?content_offset_seconds=" .. math.max(time_pos, 0)
         next_segment = ""
         seq_counter = 0
     else
@@ -156,8 +162,7 @@ function handle_track_change(name, sid)
 end
 
 function handle_seek()
-    local time_pos = mp.get_property_native("time-pos")
-    if time_pos and time_pos >= 0 then
+    if mp.get_property_native("sid") then
         load_twitch_chat(true)
     end
 end
