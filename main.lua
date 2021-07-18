@@ -46,13 +46,13 @@ local twitch_cursor
 -- two fifo segments for cycling the subtitle text
 local curr_segment
 local next_segment
--- the base number for the SubRip sequence counter
-local seq_counter_base
+-- SubRip sequence counter
+local seq_counter
 -- timer to fetch new segments of the chat data
 local timer
 
 function load_twitch_chat(is_new_session)
-    if not twitch_comments_url then
+    if not chat_sid then
         return
     end
 
@@ -60,7 +60,7 @@ function load_twitch_chat(is_new_session)
     if is_new_session then
         request_url = twitch_comments_url .. "?content_offset_seconds=" .. mp.get_property_native("time-pos")
         next_segment = ""
-        seq_counter_base = 0
+        seq_counter = 0
     else
         request_url = twitch_comments_url .. "?cursor=" .. twitch_cursor
     end
@@ -85,8 +85,8 @@ function load_twitch_chat(is_new_session)
     local segment_duration = last_msg_offset - comments[1].content_offset_seconds
     local per_msg_duration = math.min(segment_duration * o.duration_multiplier / #comments, o.max_duration)
 
-    for i = 1, #comments do
-        local msg_time_from = comments[i].content_offset_seconds
+    for i, curr_comment in ipairs(comments) do
+        local msg_time_from = curr_comment.content_offset_seconds
         local msg_time_from_ms = math.floor(msg_time_from * 1000) % 1000
         local msg_time_from_sec = math.floor(msg_time_from) % 60
         local msg_time_from_min = math.floor(msg_time_from / 60) % 60
@@ -98,11 +98,11 @@ function load_twitch_chat(is_new_session)
         local msg_time_to_min = math.floor(msg_time_to / 60) % 60
         local msg_time_to_hour = math.floor(msg_time_to / 3600)
 
-        local msg_body = (o.show_name and (comments[i].commenter.display_name .. ": ") or "") .. comments[i].message.body
+        local msg_body = (o.show_name and (curr_comment.commenter.display_name .. ": ") or "") .. curr_comment.message.body
 
         local msg_line
-        if o.color and comments[i].message.user_color then
-            msg_line = string.format("<font color=\"%s\">%s</font>", comments[i].message.user_color, msg_body)
+        if o.color and curr_comment.message.user_color then
+            msg_line = string.format("<font color=\"%s\">%s</font>", curr_comment.message.user_color, msg_body)
         else
             msg_line = msg_body
         end
@@ -111,13 +111,13 @@ function load_twitch_chat(is_new_session)
 %s
 
 ]],
-            seq_counter_base + i,
+            seq_counter,
             msg_time_from_hour, msg_time_from_min, msg_time_from_sec, msg_time_from_ms,
             msg_time_to_hour, msg_time_to_min, msg_time_to_sec, msg_time_to_ms,
             msg_line)
         next_segment = next_segment .. subtitle
+        seq_counter = seq_counter + 1
     end
-    seq_counter_base = seq_counter_base + #comments
 
     mp.commandv("sub-remove", chat_sid)
     mp.command_native({
