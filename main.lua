@@ -6,7 +6,7 @@ Options:
 
     show_name: Whether to show the commenter's name.
 
-    color: Whether the chat message is colored with the user color of the commenter.
+    color: If show_name is enabled, color the commenter's name with its user color. Otherwise, color the whole message.
 
     duration_multiplier: Each chat message's duration is calculated based on the density of the messages at the time after
         applying this multiplier. Basically, if you want more messages simultaneously on screen, increase this number.
@@ -104,14 +104,23 @@ function load_twitch_chat(is_new_session)
         local msg_time_to_min = math.floor(msg_time_to / 60) % 60
         local msg_time_to_hour = math.floor(msg_time_to / 3600)
 
-        local msg_body = (o.show_name and (curr_comment.commenter.display_name .. ": ") or "") .. curr_comment.message.body
-
-        local msg_line
-        if o.color and curr_comment.message.user_color then
-            msg_line = string.format("<font color=\"%s\">%s</font>", curr_comment.message.user_color, msg_body)
+        local msg_part_1, msg_part_2, msg_separator
+        if o.show_name then
+            msg_part_1 = curr_comment.commenter.display_name
+            msg_part_2 = curr_comment.message.body
+            msg_separator = ": "
         else
-            msg_line = msg_body
+            msg_part_1 = curr_comment.message.body
+            msg_part_2 = ""
+            msg_separator = ""
         end
+
+        if o.color and curr_comment.message.user_color then
+            msg_part_1 = string.format("<font color=\"%s\">%s</font>", curr_comment.message.user_color, msg_part_1)
+        end
+
+        local msg_line = msg_part_1 .. msg_separator .. msg_part_2
+
         local subtitle = string.format([[%i
 %i:%i:%i,%i --> %i:%i:%i,%i
 %s

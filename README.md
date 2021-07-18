@@ -31,7 +31,7 @@ To activate the script, play a Twitch VOD and switch on the "rechat" subtitle tr
 You can use mpv's auto profiles to conditionally apply special subtitle options when Twitch VOD is on. For example,
 ```
 [twitch]
-profile-cond=p.path:find("^https://www.twitch.tv/") ~= nil
+profile-cond=get("path", ""):find("^https://www.twitch.tv/") ~= nil
 profile-restore=copy-equal
 sub-font-size=30
 sub-align-x=right
