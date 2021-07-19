@@ -15,12 +15,14 @@ Note that since subtitle is text-based only, all Twitch emotes are shown as text
 
 ## Requirement
 
-* [json.lua](https://github.com/rxi/json.lua/tree/dbf4b2dd2eb7c23be2773c89eb059dadd6436f94)
+* [json.lua](https://github.com/rxi/json.lua)
 * [curl](https://curl.se/)
 
 ## Install
 
 The easiest way to install is `git clone` this repo in mpv's `scripts` directory, then `git submodule update --init --recursive` inside the repo directory.
+
+Otherwise, download the repo as zip and fill the "json.lua" directory with [json.lua](https://github.com/rxi/json.lua). Then put the whole directory to mpv's `scripts` directory.
 
 Script option file should be placed in mpv's `script-opts` directory as usual. Please read the comments in the script for how to use the options.
 
