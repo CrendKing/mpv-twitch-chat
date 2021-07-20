@@ -53,7 +53,7 @@ local seq_counter
 local timer
 
 function load_twitch_chat(is_new_session)
-    if not chat_sid then
+    if not chat_sid or not twitch_comments_url then
         return
     end
 
@@ -171,11 +171,13 @@ function handle_track_change(name, sid)
     elseif sid and not timer then
         if not twitch_comments_url then
             local sub_filename = mp.get_property_native("current-tracks/sub/external-filename")
-            twitch_comments_url = sub_filename:match("https://api.twitch.tv/v5/videos/%d+/comments")
+            twitch_comments_url = sub_filename and sub_filename:match("https://api.twitch.tv/v5/videos/%d+/comments") or nil
         end
 
-        chat_sid = sid
-        timer_callback(true)
+        if twitch_comments_url then
+            chat_sid = sid
+            timer_callback(true)
+        end
     end
 end
 
