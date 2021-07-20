@@ -76,6 +76,11 @@ function load_twitch_chat(is_new_session)
         capture_stdout = true,
         args = {"curl", "-s", "-H", "Client-ID: phiay4sq36lfv9zu7cbqwz2ndnesfd8", request_url},
     })
+    if sp_ret.status ~= 0 then
+        mp.msg.error("Error curl exit code: " .. sp_ret.status)
+        return
+    end
+
     local resp_json = json.decode(sp_ret.stdout)
     local comments = resp_json.comments
     if not comments then
@@ -145,6 +150,10 @@ function load_twitch_chat(is_new_session)
     return last_msg_offset
 end
 
+function init()
+    twitch_comments_url = nil
+end
+
 function timer_callback(is_new_session)
     local last_msg_offset = load_twitch_chat(is_new_session)
     if last_msg_offset then
@@ -176,5 +185,6 @@ function handle_seek()
     end
 end
 
+mp.register_event("start-file", init)
 mp.observe_property("current-tracks/sub/id", "native", handle_track_change)
 mp.register_event("seek", handle_seek)
