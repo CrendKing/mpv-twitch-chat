@@ -139,7 +139,7 @@ function load_twitch_chat(is_new_session)
         seq_counter = seq_counter + 1
     end
 
-    mp.commandv("sub-remove", chat_sid)
+    mp.command_native({"sub-remove", chat_sid})
     mp.command_native({
         name = "sub-add",
         url = "memory://" .. curr_segment .. next_segment,
