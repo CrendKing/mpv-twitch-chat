@@ -53,7 +53,7 @@ local seq_counter
 -- timer to fetch new segments of the chat data
 local timer
 
-function load_twitch_chat(is_new_session)
+local function load_twitch_chat(is_new_session)
     if not chat_sid or not twitch_comments_url then
         return
     end
@@ -151,11 +151,11 @@ function load_twitch_chat(is_new_session)
     return last_msg_offset
 end
 
-function init()
+local function init()
     twitch_comments_url = nil
 end
 
-function timer_callback(is_new_session)
+local function timer_callback(is_new_session)
     local last_msg_offset = load_twitch_chat(is_new_session)
     if last_msg_offset then
         local fetch_delay = last_msg_offset - mp.get_property_native("time-pos") - o.fetch_aot
@@ -165,7 +165,7 @@ function timer_callback(is_new_session)
     end
 end
 
-function handle_track_change(name, sid)
+local function handle_track_change(name, sid)
     if not sid and timer then
         timer:kill()
         timer = nil
@@ -182,7 +182,7 @@ function handle_track_change(name, sid)
     end
 end
 
-function handle_seek()
+local function handle_seek()
     if mp.get_property_native("sid") then
         load_twitch_chat(true)
     end
