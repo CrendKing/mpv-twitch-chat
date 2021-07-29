@@ -31,6 +31,7 @@ local options = require 'mp.options'
 options.read_options(o)
 
 if not mp.get_script_directory() then
+    mp.msg.error("This script requires to be placed in a script directory")
     return
 end
 
