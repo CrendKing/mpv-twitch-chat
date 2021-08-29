@@ -121,8 +121,12 @@ local function load_twitch_chat(is_new_session)
             msg_separator = ""
         end
 
-        if o.color and curr_comment.message.user_color then
-            msg_part_1 = string.format("<font color=\"%s\">%s</font>", curr_comment.message.user_color, msg_part_1)
+        if o.color then
+            if curr_comment.message.user_color then
+                msg_part_1 = string.format("<font color=\"%s\">%s</font>", curr_comment.message.user_color, msg_part_1)
+            else
+                msg_part_1 = string.format("<font color=\"#%06x\">%s</font>", curr_comment.commenter._id % 16777216, msg_part_1)
+            end
         end
 
         local msg_line = msg_part_1 .. msg_separator .. msg_part_2
