@@ -193,6 +193,17 @@ local function handle_seek()
     end
 end
 
+local function handle_pause(name, paused)
+    if timer then
+        if paused then
+            timer:stop()
+        else
+            timer:resume()
+        end
+    end
+end
+
 mp.register_event("start-file", init)
 mp.observe_property("current-tracks/sub/id", "native", handle_track_change)
 mp.register_event("seek", handle_seek)
+mp.observe_property("pause", "native", handle_pause)
