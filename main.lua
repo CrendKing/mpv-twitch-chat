@@ -17,6 +17,8 @@ Options:
     fetch_aot: The chat data is downloaded in segments. This script uses timer to fetch new segments this many seconds before the
         current segment is exhausted. Increase this number to avoid interruption if you have slower network to Twitch.
 
+    ignore_sub: Ignore subscription related messages.
+
 --]]
 
 local o = {
@@ -24,7 +26,8 @@ local o = {
     color = true,
     duration_multiplier = 10,
     max_duration = 10,
-    fetch_aot = 1
+    fetch_aot = 1,
+    ignore_sub = true,
 }
 
 local options = require 'mp.options'
@@ -98,6 +101,13 @@ local function load_twitch_chat(is_new_session)
     local per_msg_duration = math.min(segment_duration * o.duration_multiplier / #comments, o.max_duration)
 
     for i, curr_comment in ipairs(comments) do
+        if o.ignore_sub then
+            local notice_msg_id = curr_comment.message.user_notice_params["msg-id"]
+            if notice_msg_id == "sub" or notice_msg_id == "resub" then
+                goto continue
+            end
+        end
+
         local msg_time_from = curr_comment.content_offset_seconds
         local msg_time_from_ms = math.floor(msg_time_from * 1000) % 1000
         local msg_time_from_sec = math.floor(msg_time_from) % 60
@@ -143,6 +153,8 @@ local function load_twitch_chat(is_new_session)
             msg_line)
         next_segment = next_segment .. subtitle
         seq_counter = seq_counter + 1
+
+::continue::
     end
 
     mp.command_native({"sub-remove", chat_sid})
