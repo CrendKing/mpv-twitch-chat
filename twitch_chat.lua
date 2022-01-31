@@ -33,14 +33,7 @@ local o = {
 local options = require 'mp.options'
 options.read_options(o)
 
-if not mp.get_script_directory() then
-    mp.msg.error("This script requires to be placed in a script directory")
-    return
-end
-
 local utils = require "mp.utils"
-package.path = utils.join_path(utils.join_path(mp.get_script_directory(), "json.lua"), "json.lua;") .. package.path
-local json = require "json"
 
 -- sid to be operated on
 local chat_sid
@@ -85,7 +78,7 @@ local function load_twitch_chat(is_new_session)
         return
     end
 
-    local resp_json = json.decode(sp_ret.stdout)
+    local resp_json = utils.parse_json(sp_ret.stdout)
     local comments = resp_json.comments
     if not comments then
         mp.msg.error("Failed to download comments JSON: " .. sp_ret.stdout)
