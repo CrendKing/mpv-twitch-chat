@@ -15,16 +15,15 @@ Note that since subtitle is text-based only, all Twitch emotes are shown as text
 
 ## Requirement
 
-* [json.lua](https://github.com/rxi/json.lua)
 * [curl](https://curl.se/)
 
 ## Install
 
-The easiest way to install is `git clone` this repo in mpv's `scripts` directory, then `git submodule update --init --recursive` inside the repo directory.
+Best way to install is `git clone` this repo in mpv's "scripts" directory. This approach allows easy update by simply `git pull`.
 
-Otherwise, download the repo as zip and fill the "json.lua" directory with [json.lua](https://github.com/rxi/json.lua). Then put the whole directory to mpv's `scripts` directory.
+Alternatively, one can [download the repo as zip](https://github.com/CrendKing/mpv-twitch-chat/archive/refs/heads/master.zip) and extract to mpv's "scripts" directory. Updates must be made manually.
 
-Script option file should be placed in mpv's `script-opts` directory as usual. Please read the comments in the script for how to use the options.
+Script option file should be placed in mpv's `script-opts` directory as usual. Options are explains in the script file.
 
 ## Usage
 
