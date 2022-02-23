@@ -4,6 +4,8 @@ License: https://github.com/CrendKing/mpv-twitch-chat/blob/master/LICENSE
 
 Options:
 
+    twitch_client_id: Client ID to be used to request the comments from Twitch API.
+
     show_name: Whether to show the commenter's name.
 
     color: If show_name is enabled, color the commenter's name with its user color. Otherwise, color the whole message.
@@ -22,6 +24,7 @@ Options:
 --]]
 
 local o = {
+    twitch_client_id = "<replace this with a working Twitch Client ID>",
     show_name = false,
     color = true,
     duration_multiplier = 10,
@@ -71,7 +74,7 @@ local function load_twitch_chat(is_new_session)
     local sp_ret = mp.command_native({
         name = "subprocess",
         capture_stdout = true,
-        args = {"curl", "-s", "-H", "Client-ID: phiay4sq36lfv9zu7cbqwz2ndnesfd8", request_url},
+        args = {"curl", "-s", "-H", "Client-ID: " .. o.twitch_client_id, request_url},
     })
     if sp_ret.status ~= 0 then
         mp.msg.error("Error curl exit code: " .. sp_ret.status)

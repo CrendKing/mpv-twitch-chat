@@ -25,6 +25,8 @@ Alternatively, one can [download the repo as zip](https://github.com/CrendKing/m
 
 Script option file should be placed in mpv's `script-opts` directory as usual. Options are explains in the script file.
 
+User must specify a working Twitch API client ID in the option file.
+
 ## Usage
 
 To activate the script, play a Twitch VOD and switch on the "rechat" subtitle track. The script will replace it with its own subtitle track.
