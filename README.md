@@ -6,6 +6,8 @@ mpv internally uses youtube-dl to handle Twitch VOD URL. In addition to the regu
 
 Note that since subtitle is text-based only, all Twitch emotes are shown as text.
 
+The API this script uses to get the chat data is undocumented and not intended for public use, [according to Twitch](https://discuss.dev.twitch.tv/t/getting-chat-messages-on-new-api/26176). It could change or be broken at any moment, and there is no guarantee from the author. Use at your own risk.
+
 ## Features
 
 * Configurable to show commenter's name.
