@@ -6,6 +6,8 @@ Options:
 
     twitch_client_id: Client ID to be used to request the comments from Twitch API.
 
+    max_char_length: Break long lines by adding a linebreak at (at least) that position.
+
     show_name: Whether to show the commenter's name.
 
     color: If show_name is enabled, color the commenter's name with its user color. Otherwise, color the whole message.
@@ -25,6 +27,7 @@ Options:
 
 local o = {
     twitch_client_id = "<replace this with a working Twitch Client ID>",
+    max_char_length = 30,
     show_name = false,
     color = true,
     duration_multiplier = 10,
@@ -51,6 +54,10 @@ local next_segment
 local seq_counter
 -- timer to fetch new segments of the chat data
 local timer
+-- delimiters to specify where to allow lines to add graceful linebreaks at
+local delimiters = {string.byte(" "), string.byte("."), string.byte(","), string.byte("-"), string.byte("!"), string.byte("?")}
+
+local quarter_char_length = math.floor(o.max_char_length / 4) + math.floor(o.max_char_length / 2)
 
 local function load_twitch_chat(is_new_session)
     if not chat_sid or not twitch_comments_url then
@@ -125,6 +132,39 @@ local function load_twitch_chat(is_new_session)
             msg_part_1 = curr_comment.message.body
             msg_part_2 = ""
             msg_separator = ""
+        end
+
+        -- breaks strings into a specified width
+        local offset = 0
+        local imax = #msg_part_2
+        local i = quarter_char_length
+        breakLine = function(seperator)
+            local k = i
+            while msg_part_2:byte(k+1) == delimiters[1] do
+                k = k + 1
+                imax = imax - 1
+            end
+            msg_part_2 = msg_part_2:sub(1,i)..seperator..msg_part_2:sub(k+1)
+            i = i + quarter_char_length + #seperator
+            imax = imax + #seperator
+            offset = o.max_char_length - (i % o.max_char_length) - 1
+            return
+        end
+        while i < imax do
+            -- search for graceful location
+            for j = 1, #delimiters do
+                if msg_part_2:byte(i) == delimiters[j] then
+                    breakLine("\n")
+                    goto found_delimitor
+                end
+            end
+            -- force
+            if ((i + (offset//2)) % o.max_char_length) == 0 then
+                breakLine("-\n")
+                goto found_delimitor
+            end
+            i = i + 1
+            ::found_delimitor::
         end
 
         if o.color then
