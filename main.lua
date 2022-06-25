@@ -159,7 +159,7 @@ local function load_twitch_chat(is_new_session)
                 end
             end
             -- force
-            if ((i + (offset//2)) % o.max_char_length) == 0 then
+            if ((i + math.floor(offset / 2)) % o.max_char_length) == 0 then
                 breakLine("-\n")
                 goto found_delimitor
             end
