@@ -6,7 +6,9 @@ Options:
 
     twitch_client_id: Client ID to be used to request the comments from Twitch API.
 
-    max_char_length: Break long lines by adding a linebreak at (at least) that position.
+    break_long_lines: Wether long lines should get linebreaks added to make them fit. 
+
+    max_char_length: If break_long_lines is enabled, break long lines by adding a linebreak at (at least) the specified position.
 
     show_name: Whether to show the commenter's name.
 
@@ -27,6 +29,7 @@ Options:
 
 local o = {
     twitch_client_id = "<replace this with a working Twitch Client ID>",
+    break_long_lines = true,
     max_char_length = 30,
     show_name = false,
     color = true,
@@ -134,26 +137,38 @@ local function load_twitch_chat(is_new_session)
             msg_separator = ""
         end
 
-        -- breaks strings into a specified width
+        if not o.break_long_lines then
+            goto skip_line_break
+        end
+
+        local msg_body
+        if o.show_name then
+            msg_body = msg_part_2
+        else
+            msg_body = msg_part_1
+        end
+
         local offset = 0
-        local imax = #msg_part_2
+        local imax = #msg_body
         local i = quarter_char_length
+        
         breakLine = function(seperator)
             local k = i
-            while msg_part_2:byte(k+1) == delimiters[1] do
+            while msg_body:byte(k+1) == delimiters[1] do
                 k = k + 1
                 imax = imax - 1
             end
-            msg_part_2 = msg_part_2:sub(1,i)..seperator..msg_part_2:sub(k+1)
+            msg_body = msg_body:sub(1,i)..seperator..msg_body:sub(k+1)
             i = i + quarter_char_length + #seperator
             imax = imax + #seperator
             offset = o.max_char_length - (i % o.max_char_length) - 1
             return
         end
+        
         while i < imax do
             -- search for graceful location
             for j = 1, #delimiters do
-                if msg_part_2:byte(i) == delimiters[j] then
+                if msg_body:byte(i) == delimiters[j] then
                     breakLine("\n")
                     goto found_delimitor
                 end
@@ -166,6 +181,13 @@ local function load_twitch_chat(is_new_session)
             i = i + 1
             ::found_delimitor::
         end
+
+        if o.show_name then
+            msg_part_2 = msg_body
+        else
+            msg_part_1 = msg_body
+        end
+        ::skip_line_break::
 
         if o.color then
             if curr_comment.message.user_color then
