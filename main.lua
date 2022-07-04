@@ -6,10 +6,6 @@ Options:
 
     twitch_client_id: Client ID to be used to request the comments from Twitch API.
 
-    break_long_lines: Wether long lines should get linebreaks added to make them fit. 
-
-    max_char_length: If break_long_lines is enabled, break long lines by adding a linebreak at (at least) the specified position.
-
     show_name: Whether to show the commenter's name.
 
     color: If show_name is enabled, color the commenter's name with its user color. Otherwise, color the whole message.
@@ -20,6 +16,8 @@ Options:
     max_duration: Maximum duration in seconds of each chat message after applying the previous multiplier. This exists to prevent
         messages to stay forever in "cold" segments.
 
+    max_message_length: Break long messages into lines with at most this much length. Specify 0 to disable line breaking.
+
     fetch_aot: The chat data is downloaded in segments. This script uses timer to fetch new segments this many seconds before the
         current segment is exhausted. Increase this number to avoid interruption if you have slower network to Twitch.
 
@@ -29,12 +27,11 @@ Options:
 
 local o = {
     twitch_client_id = "<replace this with a working Twitch Client ID>",
-    break_long_lines = true,
-    max_char_length = 30,
     show_name = false,
     color = true,
     duration_multiplier = 10,
     max_duration = 10,
+    max_message_length = 40,
     fetch_aot = 1,
     ignore_sub = true,
 }
@@ -57,10 +54,41 @@ local next_segment
 local seq_counter
 -- timer to fetch new segments of the chat data
 local timer
--- delimiters to specify where to allow lines to add graceful linebreaks at
-local delimiters = {string.byte(" "), string.byte("."), string.byte(","), string.byte("-"), string.byte("!"), string.byte("?")}
+-- delimiters to specify where to allow lines to add graceful line breaks at
+local delimiter_pattern = " %.,%-!%?"
 
-local quarter_char_length = math.floor(o.max_char_length / 4) + math.floor(o.max_char_length / 2)
+local function split_string(input)
+    local splits = {}
+
+    for input in string.gmatch(input, "[^" .. delimiter_pattern .. "]+[" .. delimiter_pattern .. "]*") do
+        table.insert(splits, input)
+    end
+
+    return splits
+end
+
+local function break_message_body(message_body)
+    if o.max_message_length <= 0 then
+        return message_body
+    end
+
+    local length_sofar = 0
+    local ret = ""
+
+    for _, v in ipairs(split_string(message_body)) do
+        length_sofar = length_sofar + #v
+
+        if length_sofar > o.max_message_length then
+            -- assume #v is always < o.max_message_length for simplicity
+            ret = ret .. "\n" .. v
+            length_sofar = #v
+        else
+            ret = ret .. v
+        end
+    end
+
+    return ret
+end
 
 local function load_twitch_chat(is_new_session)
     if not chat_sid or not twitch_comments_url then
@@ -129,65 +157,13 @@ local function load_twitch_chat(is_new_session)
         local msg_part_1, msg_part_2, msg_separator
         if o.show_name then
             msg_part_1 = curr_comment.commenter.display_name
-            msg_part_2 = curr_comment.message.body
+            msg_part_2 = break_message_body(curr_comment.message.body)
             msg_separator = ": "
         else
-            msg_part_1 = curr_comment.message.body
+            msg_part_1 = break_message_body(curr_comment.message.body)
             msg_part_2 = ""
             msg_separator = ""
         end
-
-        if not o.break_long_lines then
-            goto skip_line_break
-        end
-
-        local msg_body
-        if o.show_name then
-            msg_body = msg_part_2
-        else
-            msg_body = msg_part_1
-        end
-
-        local offset = 0
-        local imax = #msg_body
-        local i = quarter_char_length
-        
-        breakLine = function(seperator)
-            local k = i
-            while msg_body:byte(k+1) == delimiters[1] do
-                k = k + 1
-                imax = imax - 1
-            end
-            msg_body = msg_body:sub(1,i)..seperator..msg_body:sub(k+1)
-            i = i + quarter_char_length + #seperator
-            imax = imax + #seperator
-            offset = o.max_char_length - (i % o.max_char_length) - 1
-            return
-        end
-        
-        while i < imax do
-            -- search for graceful location
-            for j = 1, #delimiters do
-                if msg_body:byte(i) == delimiters[j] then
-                    breakLine("\n")
-                    goto found_delimitor
-                end
-            end
-            -- force
-            if ((i + math.floor(offset / 2)) % o.max_char_length) == 0 then
-                breakLine("-\n")
-                goto found_delimitor
-            end
-            i = i + 1
-            ::found_delimitor::
-        end
-
-        if o.show_name then
-            msg_part_2 = msg_body
-        else
-            msg_part_1 = msg_body
-        end
-        ::skip_line_break::
 
         if o.color then
             if curr_comment.message.user_color then
