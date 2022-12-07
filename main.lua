@@ -21,19 +21,18 @@ Options:
     fetch_aot: The chat data is downloaded in segments. This script uses timer to fetch new segments this many seconds before the
         current segment is exhausted. Increase this number to avoid interruption if you have slower network to Twitch.
 
-    ignore_sub: Ignore subscription related messages.
-
 --]]
 
+local TWITCH_GRAPHQL_URL = 'https://gql.twitch.tv/gql'
+
 local o = {
-    twitch_client_id = "<replace this with a working Twitch Client ID>",
+    twitch_client_id = nil,  -- replace this with a working Twitch Client ID
     show_name = false,
     color = true,
     duration_multiplier = 10,
     max_duration = 10,
     max_message_length = 40,
     fetch_aot = 1,
-    ignore_sub = true,
 }
 
 local options = require 'mp.options'
@@ -43,8 +42,8 @@ local utils = require "mp.utils"
 
 -- sid to be operated on
 local chat_sid
--- request url for the chat data
-local twitch_comments_url
+-- Twitch video id
+local twitch_video_id
 -- next segment ID to fetch from Twitch
 local twitch_cursor
 -- two fifo segments for cycling the subtitle text
@@ -91,28 +90,40 @@ local function break_message_body(message_body)
 end
 
 local function load_twitch_chat(is_new_session)
-    if not chat_sid or not twitch_comments_url then
+    if not chat_sid or not twitch_video_id  then
         return
     end
 
-    local request_url
+    local request_body = {
+        ['operationName'] = 'VideoCommentsByOffsetOrCursor',
+        ['variables'] = {
+            ['videoID'] = twitch_video_id
+        },
+        ['extensions'] = {
+            ['persistedQuery'] = {
+                ['version'] = 1,
+                ['sha256Hash'] = 'b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a'
+            }
+        }
+    }
+
     if is_new_session then
         local time_pos = mp.get_property_native("time-pos")
         if not time_pos then
             return
         end
 
-        request_url = twitch_comments_url .. "?content_offset_seconds=" .. math.max(time_pos, 0)
+        request_body.variables.contentOffsetSeconds = math.max(math.floor(time_pos), 0)
         next_segment = ""
         seq_counter = 0
     else
-        request_url = twitch_comments_url .. "?cursor=" .. twitch_cursor
+        request_body.variables.cursor = twitch_cursor
     end
 
     local sp_ret = mp.command_native({
         name = "subprocess",
         capture_stdout = true,
-        args = {"curl", "-s", "-H", "Client-ID: " .. o.twitch_client_id, request_url},
+        args = {"curl", '--request', 'POST', "--header", "Client-ID: " .. o.twitch_client_id, '--data', utils.format_json(request_body), "--silent", TWITCH_GRAPHQL_URL},
     })
     if sp_ret.status ~= 0 then
         mp.msg.error("Error curl exit code: " .. sp_ret.status)
@@ -120,29 +131,24 @@ local function load_twitch_chat(is_new_session)
     end
 
     local resp_json = utils.parse_json(sp_ret.stdout)
-    local comments = resp_json.comments
+    local comments = resp_json.data.video.comments.edges
     if not comments then
         mp.msg.error("Failed to download comments JSON: " .. sp_ret.stdout)
         return
     end
 
-    twitch_cursor = resp_json._next
+    twitch_cursor = comments[1].cursor
     curr_segment = next_segment
     next_segment = ""
 
-    local last_msg_offset = comments[#comments].content_offset_seconds
-    local segment_duration = last_msg_offset - comments[1].content_offset_seconds
+    local last_msg_offset = comments[#comments].node.contentOffsetSeconds
+    local segment_duration = last_msg_offset - comments[1].node.contentOffsetSeconds
     local per_msg_duration = math.min(segment_duration * o.duration_multiplier / #comments, o.max_duration)
 
     for i, curr_comment in ipairs(comments) do
-        if o.ignore_sub then
-            local notice_msg_id = curr_comment.message.user_notice_params["msg-id"]
-            if notice_msg_id == "sub" or notice_msg_id == "resub" then
-                goto continue
-            end
-        end
+        local curr_comment_node = curr_comment.node
 
-        local msg_time_from = curr_comment.content_offset_seconds
+        local msg_time_from = curr_comment_node.contentOffsetSeconds
         local msg_time_from_ms = math.floor(msg_time_from * 1000) % 1000
         local msg_time_from_sec = math.floor(msg_time_from) % 60
         local msg_time_from_min = math.floor(msg_time_from / 60) % 60
@@ -154,22 +160,27 @@ local function load_twitch_chat(is_new_session)
         local msg_time_to_min = math.floor(msg_time_to / 60) % 60
         local msg_time_to_hour = math.floor(msg_time_to / 3600)
 
+        local msg_text = ''
+        for j, frag in ipairs(curr_comment_node.message.fragments) do
+            msg_text = msg_text .. (frag.emote and '<u>' or '') .. frag.text .. (frag.emote and '</u>' or '')
+        end
+
         local msg_part_1, msg_part_2, msg_separator
         if o.show_name then
-            msg_part_1 = curr_comment.commenter.display_name
-            msg_part_2 = break_message_body(curr_comment.message.body)
+            msg_part_1 = curr_comment_node.commenter.displayName
+            msg_part_2 = break_message_body(msg_text)
             msg_separator = ": "
         else
-            msg_part_1 = break_message_body(curr_comment.message.body)
+            msg_part_1 = break_message_body(msg_text)
             msg_part_2 = ""
             msg_separator = ""
         end
 
         if o.color then
-            if curr_comment.message.user_color then
-                msg_color = curr_comment.message.user_color
+            if curr_comment_node.message.userColor then
+                msg_color = curr_comment_node.message.userColor
             else
-                msg_color = string.format("#%06x", curr_comment.commenter._id % 16777216)
+                msg_color = string.format("#%06x", curr_comment_node.commenter.id % 16777216)
             end
             msg_part_1 = string.format("<font color=\"%s\">%s</font>", msg_color, msg_part_1)
         end
@@ -191,7 +202,6 @@ local function load_twitch_chat(is_new_session)
 ::continue::
     end
 
-    mp.command_native({"sub-remove", chat_sid})
     mp.command_native({
         name = "sub-add",
         url = "memory://" .. curr_segment .. next_segment,
@@ -203,7 +213,7 @@ local function load_twitch_chat(is_new_session)
 end
 
 local function init()
-    twitch_comments_url = nil
+    twitch_video_id = nil
 end
 
 local function timer_callback(is_new_session)
@@ -221,13 +231,20 @@ local function handle_track_change(name, sid)
         timer:kill()
         timer = nil
     elseif sid and not timer then
-        if not twitch_comments_url then
+        if not twitch_video_id then
             local sub_filename = mp.get_property_native("current-tracks/sub/external-filename")
-            twitch_comments_url = sub_filename and sub_filename:match("https://api.twitch.tv/v5/videos/%d+/comments") or nil
+            if sub_filename then
+                twitch_video_id, twitch_client_id_from_track = sub_filename:match("https://api%.twitch%.tv/v5/videos/(%d+)/comments%?client_id=(%w+)")
+
+                if twitch_client_id_from_track and not o.twitch_client_id then
+                    o.twitch_client_id = twitch_client_id_from_track
+                end
+            end
         end
 
-        if twitch_comments_url then
+        if twitch_video_id then
             chat_sid = sid
+            mp.command_native({"sub-remove", chat_sid})
             timer_callback(true)
         end
     end
