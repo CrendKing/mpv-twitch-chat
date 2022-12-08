@@ -17,7 +17,7 @@ The API this script uses to get the chat data is undocumented and not intended f
 
 ## Requirement
 
-* [curl](https://curl.se/)
+* [curl](https://curl.se/), which should be preinstalled in most operating systems
 
 ## Install
 
@@ -27,7 +27,7 @@ Alternatively, one can [download the repo as zip](https://github.com/CrendKing/m
 
 Script option file should be placed in mpv's `script-opts` directory as usual. Options are explains in the script file.
 
-User must specify a working Twitch API client ID in the option file.
+User should specify a working Twitch API client ID in the option file.
 
 ## Usage
 
