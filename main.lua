@@ -166,7 +166,7 @@ local function load_twitch_chat(is_new_session)
         end
 
         local msg_part_1, msg_part_2, msg_separator
-        if o.show_name then
+        if o.show_name and curr_comment_node.commenter then
             msg_part_1 = curr_comment_node.commenter.displayName
             msg_part_2 = break_message_body(msg_text)
             msg_separator = ': '
@@ -179,10 +179,13 @@ local function load_twitch_chat(is_new_session)
         if o.color then
             if curr_comment_node.message.userColor then
                 msg_color = curr_comment_node.message.userColor
-            else
+            elseif curr_comment_node.commenter then
                 msg_color = string.format('#%06x', curr_comment_node.commenter.id % 16777216)
             end
-            msg_part_1 = string.format('<font color="%s">%s</font>', msg_color, msg_part_1)
+
+            if msg_color then
+                msg_part_1 = string.format('<font color="%s">%s</font>', msg_color, msg_part_1)
+            end
         end
 
         local msg_line = msg_part_1 .. msg_separator .. msg_part_2
