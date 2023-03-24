@@ -201,8 +201,6 @@ local function load_twitch_chat(is_new_session)
             msg_line)
         next_segment = next_segment .. subtitle
         seq_counter = seq_counter + 1
-
-::continue::
     end
 
     mp.command_native({
