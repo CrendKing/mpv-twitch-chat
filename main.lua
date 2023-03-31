@@ -125,12 +125,18 @@ local function load_twitch_chat(is_new_session)
         capture_stdout = true,
         args = {'curl', '--request', 'POST', '--header', 'Client-ID: ' .. o.twitch_client_id, '--data', utils.format_json(request_body), '--silent', TWITCH_GRAPHQL_URL},
     })
+
     if sp_ret.status ~= 0 then
         mp.msg.error('Error curl exit code: ' .. sp_ret.status)
         return
     end
 
     local resp_json = utils.parse_json(sp_ret.stdout)
+    if resp_json.error then
+        mp.msg.error(string.format('Error from Twitch: HTTP %d %s: %s', resp_json.status, resp_json.error, resp_json.message))
+        return
+    end
+
     local comments = resp_json.data.video.comments.edges
     if not comments then
         mp.msg.error('Failed to download comments JSON: ' .. sp_ret.stdout)
