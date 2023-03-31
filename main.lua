@@ -26,7 +26,7 @@ Options:
 local TWITCH_GRAPHQL_URL = 'https://gql.twitch.tv/gql'
 
 local o = {
-    twitch_client_id = nil,  -- replace this with a working Twitch Client ID
+    twitch_client_id = '',  -- replace this with a working Twitch Client ID
     show_name = false,
     color = true,
     duration_multiplier = 10,
@@ -237,7 +237,7 @@ local function handle_track_change(name, sid)
             if sub_filename then
                 twitch_video_id, twitch_client_id_from_track = sub_filename:match('https://api%.twitch%.tv/v5/videos/(%d+)/comments%?client_id=(%w+)')
 
-                if twitch_client_id_from_track and not o.twitch_client_id then
+                if twitch_client_id_from_track and o.twitch_client_id == '' then
                     o.twitch_client_id = twitch_client_id_from_track
                 end
             end
