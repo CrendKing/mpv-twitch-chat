@@ -210,6 +210,10 @@ local function load_twitch_chat(is_new_session)
     end
 
     mp.command_native({
+        name = 'sub-remove',
+        id = chat_sid
+    })
+    mp.command_native({
         name = 'sub-add',
         url = 'memory://' .. curr_segment .. next_segment,
         title = 'Twitch Chat'
