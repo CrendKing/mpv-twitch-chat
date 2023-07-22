@@ -132,8 +132,10 @@ local function load_twitch_chat(is_new_session)
     end
 
     local resp_json = utils.parse_json(sp_ret.stdout)
-    if resp_json.error then
-        mp.msg.error(string.format('Error from Twitch: HTTP %d %s: %s', resp_json.status, resp_json.error, resp_json.message))
+    if resp_json.errors then
+        for _, error in ipairs(resp_json.errors) do
+            mp.msg.error(string.format('Error from Twitch: %s', error.message))
+        end
         return
     end
 
@@ -151,7 +153,7 @@ local function load_twitch_chat(is_new_session)
     local segment_duration = last_msg_offset - comments[1].node.contentOffsetSeconds
     local per_msg_duration = math.min(segment_duration * o.duration_multiplier / #comments, o.max_duration)
 
-    for i, curr_comment in ipairs(comments) do
+    for _, curr_comment in ipairs(comments) do
         local curr_comment_node = curr_comment.node
 
         local msg_time_from = curr_comment_node.contentOffsetSeconds
@@ -167,7 +169,7 @@ local function load_twitch_chat(is_new_session)
         local msg_time_to_hour = math.floor(msg_time_to / 3600)
 
         local msg_text = ''
-        for j, frag in ipairs(curr_comment_node.message.fragments) do
+        for _, frag in ipairs(curr_comment_node.message.fragments) do
             msg_text = msg_text .. (frag.emote and '<u>' or '') .. frag.text .. (frag.emote and '</u>' or '')
         end
 
