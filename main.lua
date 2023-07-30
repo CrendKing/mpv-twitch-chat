@@ -257,7 +257,7 @@ local function handle_track_change(name, sid)
 
         if twitch_video_id then
             chat_sid = sid
-            mp.command_native({'sub-remove', chat_sid})
+            mp.commandv('sub-remove', chat_sid)
             timer_callback(true)
         end
     end
@@ -269,9 +269,9 @@ local function handle_seek()
     end
 end
 
-local function handle_pause(name, paused)
+local function handle_pause(name, is_paused)
     if timer then
-        if paused then
+        if is_paused then
             timer:stop()
         else
             timer:resume()
@@ -280,6 +280,6 @@ local function handle_pause(name, paused)
 end
 
 mp.register_event('start-file', init)
-mp.observe_property('current-tracks/sub/id', 'native', handle_track_change)
+mp.observe_property('current-tracks/sub/id', 'number', handle_track_change)
 mp.register_event('seek', handle_seek)
-mp.observe_property('pause', 'native', handle_pause)
+mp.observe_property('pause', 'bool', handle_pause)
