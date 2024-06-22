@@ -59,8 +59,8 @@ local delimiter_pattern = ' %.,%-!%?'
 local function split_string(input)
     local splits = {}
 
-    for input in string.gmatch(input, '[^' .. delimiter_pattern .. ']+[' .. delimiter_pattern .. ']*') do
-        table.insert(splits, input)
+    for segment in string.gmatch(input, string.format('[^%s]+[%s]*', delimiter_pattern, delimiter_pattern)) do
+        table.insert(splits, segment)
     end
 
     return splits
@@ -79,10 +79,10 @@ local function break_message_body(message_body)
 
         if length_sofar > o.max_message_length then
             -- assume #v is always < o.max_message_length for simplicity
-            ret = ret .. '\n' .. v
+            ret = string.format('%s\n%s', ret, v)
             length_sofar = #v
         else
-            ret = ret .. v
+            ret = string.format('%s%s', ret, v)
         end
     end
 
@@ -108,12 +108,12 @@ local function load_twitch_chat(is_new_session)
     }
 
     if is_new_session then
-        local time_pos = mp.get_property_native('time-pos')
-        if not time_pos then
+        local playback_time = mp.get_property_native('playback-time')
+        if not playback_time then
             return
         end
 
-        request_body.variables.contentOffsetSeconds = math.max(math.floor(time_pos), 0)
+        request_body.variables.contentOffsetSeconds = math.max(math.floor(playback_time), 0)
         next_segment = ''
         seq_counter = 0
     else
@@ -123,11 +123,11 @@ local function load_twitch_chat(is_new_session)
     local sp_ret = mp.command_native({
         name = 'subprocess',
         capture_stdout = true,
-        args = {'curl', '--request', 'POST', '--header', 'Client-ID: ' .. o.twitch_client_id, '--data', utils.format_json(request_body), '--silent', TWITCH_GRAPHQL_URL},
+        args = {'curl', '--request', 'POST', '--header', string.format('Client-ID: %s', o.twitch_client_id), '--data', utils.format_json(request_body), '--silent', TWITCH_GRAPHQL_URL},
     })
 
     if sp_ret.status ~= 0 then
-        mp.msg.error('Error curl exit code: ' .. sp_ret.status)
+        mp.msg.error(string.format('Error curl exit code: %d', sp_ret.status))
         return
     end
 
@@ -141,7 +141,7 @@ local function load_twitch_chat(is_new_session)
 
     local comments = resp_json.data.video.comments.edges
     if not comments then
-        mp.msg.error('Failed to download comments JSON: ' .. sp_ret.stdout)
+        mp.msg.error(string.format('Failed to download comments JSON: %s', sp_ret.stdout))
         return
     end
 
@@ -170,7 +170,7 @@ local function load_twitch_chat(is_new_session)
 
         local msg_text = ''
         for _, frag in ipairs(curr_comment_node.message.fragments) do
-            msg_text = msg_text .. (frag.emote and '<u>' or '') .. frag.text .. (frag.emote and '</u>' or '')
+            msg_text = string.format('%s%s%s%s', msg_text, frag.emote and '<u>' or '', frag.text, frag.emote and '</u>' or '')
         end
 
         local msg_part_1, msg_part_2, msg_separator
@@ -185,6 +185,8 @@ local function load_twitch_chat(is_new_session)
         end
 
         if o.color then
+            local msg_color
+
             if curr_comment_node.message.userColor then
                 msg_color = curr_comment_node.message.userColor
             elseif curr_comment_node.commenter then
@@ -196,7 +198,7 @@ local function load_twitch_chat(is_new_session)
             end
         end
 
-        local msg_line = msg_part_1 .. msg_separator .. msg_part_2
+        local msg_line = string.format('%s%s%s', msg_part_1, msg_separator, msg_part_2)
 
         local subtitle = string.format([[%i
 %i:%i:%i,%i --> %i:%i:%i,%i
@@ -207,7 +209,7 @@ local function load_twitch_chat(is_new_session)
             msg_time_from_hour, msg_time_from_min, msg_time_from_sec, msg_time_from_ms,
             msg_time_to_hour, msg_time_to_min, msg_time_to_sec, msg_time_to_ms,
             msg_line)
-        next_segment = next_segment .. subtitle
+        next_segment = string.format('%s%s', next_segment, subtitle)
         seq_counter = seq_counter + 1
     end
 
@@ -217,7 +219,7 @@ local function load_twitch_chat(is_new_session)
     })
     mp.command_native({
         name = 'sub-add',
-        url = 'memory://' .. curr_segment .. next_segment,
+        url = string.format('memory://%s%s', curr_segment, next_segment),
         title = 'Twitch Chat'
     })
     chat_sid = mp.get_property_native('sid')
@@ -232,7 +234,7 @@ end
 local function timer_callback(is_new_session)
     local last_msg_offset = load_twitch_chat(is_new_session)
     if last_msg_offset then
-        local fetch_delay = last_msg_offset - mp.get_property_native('time-pos') - o.fetch_aot
+        local fetch_delay = last_msg_offset - mp.get_property_native('playback-time') - o.fetch_aot
         timer = mp.add_timeout(fetch_delay, function()
             timer_callback(false)
         end)
@@ -247,6 +249,7 @@ local function handle_track_change(name, sid)
         if not twitch_video_id then
             local sub_filename = mp.get_property_native('current-tracks/sub/external-filename')
             if sub_filename then
+                local twitch_client_id_from_track
                 twitch_video_id, twitch_client_id_from_track = sub_filename:match('https://api%.twitch%.tv/v5/videos/(%d+)/comments%?client_id=(%w+)')
 
                 if twitch_client_id_from_track and o.twitch_client_id == '' then
@@ -280,6 +283,6 @@ local function handle_pause(name, is_paused)
 end
 
 mp.register_event('start-file', init)
-mp.observe_property('current-tracks/sub/id', 'number', handle_track_change)
+mp.observe_property('current-tracks/sub/id', 'native', handle_track_change)
 mp.register_event('seek', handle_seek)
-mp.observe_property('pause', 'bool', handle_pause)
+mp.observe_property('pause', 'native', handle_pause)
