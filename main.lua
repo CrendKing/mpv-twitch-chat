@@ -108,12 +108,12 @@ local function load_twitch_chat(is_new_session)
     }
 
     if is_new_session then
-        local playback_time = mp.get_property_native('playback-time')
-        if not playback_time then
+        local time_pos = mp.get_property_native('time-pos')
+        if not time_pos then
             return
         end
 
-        request_body.variables.contentOffsetSeconds = math.max(math.floor(playback_time), 0)
+        request_body.variables.contentOffsetSeconds = math.max(math.floor(time_pos), 0)
         next_segment = ''
         seq_counter = 0
     else
@@ -234,7 +234,7 @@ end
 local function timer_callback(is_new_session)
     local last_msg_offset = load_twitch_chat(is_new_session)
     if last_msg_offset then
-        local fetch_delay = last_msg_offset - mp.get_property_native('playback-time') - o.fetch_aot
+        local fetch_delay = last_msg_offset - mp.get_property_native('time-pos') - o.fetch_aot
         timer = mp.add_timeout(fetch_delay, function()
             timer_callback(false)
         end)
