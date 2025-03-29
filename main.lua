@@ -26,7 +26,7 @@ Options:
 local TWITCH_GRAPHQL_URL = 'https://gql.twitch.tv/gql'
 
 local o = {
-    twitch_client_id = '',  -- replace this with a working Twitch Client ID
+    twitch_client_id = '', -- replace this with a working Twitch Client ID
     show_name = false,
     color = true,
     duration_multiplier = 10,
@@ -35,8 +35,7 @@ local o = {
     fetch_aot = 1,
 }
 
-local options = require 'mp.options'
-options.read_options(o)
+require('mp.options').read_options(o)
 
 local utils = require 'mp.utils'
 
@@ -90,21 +89,21 @@ local function break_message_body(message_body)
 end
 
 local function load_twitch_chat(is_new_session)
-    if not chat_sid or not twitch_video_id  then
+    if not chat_sid or not twitch_video_id then
         return
     end
 
     local request_body = {
         ['operationName'] = 'VideoCommentsByOffsetOrCursor',
         ['variables'] = {
-            ['videoID'] = twitch_video_id
+            ['videoID'] = twitch_video_id,
         },
         ['extensions'] = {
             ['persistedQuery'] = {
                 ['version'] = 1,
-                ['sha256Hash'] = 'b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a'
-            }
-        }
+                ['sha256Hash'] = 'b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a',
+            },
+        },
     }
 
     if is_new_session then
@@ -123,7 +122,7 @@ local function load_twitch_chat(is_new_session)
     local sp_ret = mp.command_native({
         name = 'subprocess',
         capture_stdout = true,
-        args = {'curl', '--request', 'POST', '--header', string.format('Client-ID: %s', o.twitch_client_id), '--data', utils.format_json(request_body), '--silent', TWITCH_GRAPHQL_URL},
+        args = { 'curl', '--request', 'POST', '--header', string.format('Client-ID: %s', o.twitch_client_id), '--data', utils.format_json(request_body), '--silent', TWITCH_GRAPHQL_URL },
     })
 
     if sp_ret.status ~= 0 then
@@ -215,12 +214,12 @@ local function load_twitch_chat(is_new_session)
 
     mp.command_native({
         name = 'sub-remove',
-        id = chat_sid
+        id = chat_sid,
     })
     mp.command_native({
         name = 'sub-add',
         url = string.format('memory://%s%s', curr_segment, next_segment),
-        title = 'Twitch Chat'
+        title = 'Twitch Chat',
     })
     chat_sid = mp.get_property_native('sid')
 
@@ -235,7 +234,7 @@ local function timer_callback(is_new_session)
     local last_msg_offset = load_twitch_chat(is_new_session)
     if last_msg_offset then
         local fetch_delay = last_msg_offset - mp.get_property_native('time-pos') - o.fetch_aot
-        timer = mp.add_timeout(fetch_delay, function()
+        timer = mp.add_timeout(fetch_delay, function ()
             timer_callback(false)
         end)
     end
