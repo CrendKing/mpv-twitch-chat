@@ -1,10 +1,6 @@
 # [mpv Twitch Chat](https://github.com/CrendKing/mpv-twitch-chat)
 
-Show Twitch chat messages as subtitles when watching Twitch VOD with mpv.
-
-mpv internally uses youtube-dl to handle Twitch VOD URL. In addition to the regular video track, it also adds a "rechat" subtitle track. This track points to the Twitch API `videos/<video_id>/comments`, which contains the full transcript of a VOD's chat messages in JSON. Unfortunately, mpv can't directly consume the JSON as subtitle. This script converts it into a SubRip subtitle track so that mpv can directly display the chat messages.
-
-Note that since subtitle is text-based only, all Twitch emotes are shown as text.
+Show Twitch chat messages as subtitles when watching Twitch VOD with mpv. Note that since subtitle is text-based only, all Twitch emotes are shown as text.
 
 The API this script uses to get the chat data is undocumented and not intended for public use, [according to Twitch](https://discuss.dev.twitch.tv/t/getting-chat-messages-on-new-api/26176). It could change or be broken at any moment, and there is no guarantee from the author. Use at your own risk.
 
@@ -31,7 +27,7 @@ User should specify a working Twitch API client ID in the option file.
 
 ## Usage
 
-To activate the script, play a Twitch VOD and switch on the "rechat" subtitle track. The script will replace it with its own subtitle track.
+To activate the script, play a Twitch VOD and switch on the "Twitch Chat" subtitle track. The script will replace it with its own subtitle track.
 
 You can use mpv's auto profiles to conditionally apply special subtitle options when Twitch VOD is on. For example,
 ```
