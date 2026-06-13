@@ -1,10 +1,11 @@
 --[[
 
-License: https://github.com/CrendKing/mpv-twitch-chat/blob/master/LICENSE
+License: https://github.com/CrendKing/mpv-twitch-chat/blob/master/LICENSE.txt
 
 Options:
 
-    twitch_client_id: Client ID to be used to request the comments from Twitch API.
+    twitch_client_id: Client ID to be used to request the comments from Twitch API. By default use yt-dlp's Twitch client ID.
+        It is recommended to create and use your own client ID.
 
     show_name: Whether to show the commenter's name.
 
@@ -26,7 +27,7 @@ Options:
 local TWITCH_GRAPHQL_URL = 'https://gql.twitch.tv/gql'
 
 local o = {
-    twitch_client_id = '', -- replace this with a working Twitch Client ID
+    twitch_client_id = 'ue6666qo983tsx6so1t0vnawi233wa',
     show_name = false,
     color = true,
     duration_multiplier = 10,
@@ -38,6 +39,8 @@ local o = {
 require('mp.options').read_options(o)
 
 local utils = require 'mp.utils'
+
+local TRACK_TITLE = 'Twitch Chat'
 
 -- sid to be operated on
 local chat_sid
@@ -108,7 +111,7 @@ local function load_twitch_chat(is_new_session)
 
     if is_new_session then
         local time_pos = mp.get_property_native('time-pos')
-        if not time_pos then
+        if time_pos == nil then
             return
         end
 
@@ -139,7 +142,7 @@ local function load_twitch_chat(is_new_session)
     end
 
     local comments = resp_json.data.video.comments.edges
-    if not comments then
+    if comments == nil then
         mp.msg.error(string.format('Failed to download comments JSON: %s', sp_ret.stdout))
         return
     end
@@ -219,7 +222,7 @@ local function load_twitch_chat(is_new_session)
     mp.command_native({
         name = 'sub-add',
         url = string.format('memory://%s%s', curr_segment, next_segment),
-        title = 'Twitch Chat',
+        title = TRACK_TITLE,
     })
     chat_sid = mp.get_property_native('sid')
 
@@ -228,6 +231,16 @@ end
 
 local function init()
     twitch_video_id = nil
+
+    -- the placeholder subtitle track must contain valid subtitle content (in any mpv supported format)
+    -- currently using the minimum content of SubRip, which Twitch also uses, for consistency
+    -- Other minimum placeholders also work, such as "memory://WEBVTT"
+    mp.command_native({
+        name = 'sub-add',
+        url = 'memory://0\n0:0:0,0 --> 0:0:0,0',
+        flags = 'auto',
+        title = TRACK_TITLE,
+    })
 end
 
 local function timer_callback(is_new_session)
@@ -241,25 +254,16 @@ local function timer_callback(is_new_session)
 end
 
 local function handle_track_change(name, sid)
-    if not sid and timer then
+    if sid == nil and timer ~= nil then
         timer:kill()
         timer = nil
-    elseif sid and not timer then
-        if not twitch_video_id then
-            local sub_filename = mp.get_property_native('current-tracks/sub/external-filename')
-            if sub_filename then
-                local twitch_client_id_from_track
-                twitch_video_id, twitch_client_id_from_track = sub_filename:match('https://api%.twitch%.tv/v5/videos/(%d+)/comments%?client_id=(%w+)')
-
-                if twitch_client_id_from_track and o.twitch_client_id == '' then
-                    o.twitch_client_id = twitch_client_id_from_track
-                end
-            end
+    elseif sid ~= nil and timer == nil then
+        if twitch_video_id == nil then
+            twitch_video_id = mp.get_property_native('path'):match('https://www%.twitch%.tv/videos/(%d+)')
         end
 
         if twitch_video_id then
             chat_sid = sid
-            mp.commandv('sub-remove', chat_sid)
             timer_callback(true)
         end
     end
@@ -281,7 +285,7 @@ local function handle_pause(name, is_paused)
     end
 end
 
-mp.register_event('start-file', init)
+mp.register_event('file-loaded', init)
 mp.observe_property('current-tracks/sub/id', 'native', handle_track_change)
 mp.register_event('seek', handle_seek)
 mp.observe_property('pause', 'native', handle_pause)
